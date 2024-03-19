@@ -1,0 +1,148 @@
+# Cargar paquetes
+
+
+install.packages("pacman")
+library(pacman, dplyr, readr, tidyverse, openxlsx)
+pacman::p_load(tidyverse)
+
+
+# Importar base de datos
+
+library(readr)
+vivienda_2022 <- read_csv("~/Downloads/enigh2022_ns_viviendas_csv (1).zip")
+View(vivienda_2022)
+
+concentradohogar_2022 <- read_csv("~/Desktop/yo_adulta/trabajo/SEDATU/Rezago_Habitacional/Metodologia_rezago_habitacional/01_datos/concentradohogar_2022.csv")
+View(concentradohogar_2022)
+
+
+rezago_habitacional_2022 <- left_join(vivienda_2022, concentradohogar_2022, by = c("folioviv", "ubica_geo", "factor")) %>% 
+  transmute(techos_det = case_when(as.integer(mat_techos) %in% c(1,2,6)~ 1,
+                                   T ~0),
+            pared_det = case_when(as.integer(mat_pared) %in% c(1,2,4,5) ~ 1,
+                                  T ~ 0),
+            mat_det = case_when(techos_det == 0 & pared_det == 0 ~ 0,
+                                techos_det == 1 | pared_det == 1 ~ 1),
+            techos_reg = case_when(as.integer(mat_techos) %in% c(3,4,7,9)~ 1,
+                                   T ~0),
+            pared_reg = case_when(as.integer(mat_pared) %in% c(3,6) ~ 1,
+                                  T ~ 0),
+            pisos_reg = case_when(as.integer(mat_pisos) %in% c(1)~1,
+                                  T~0),
+            mat_reg = case_when(techos_reg == 0 & pared_reg == 0 & pisos_reg == 0 ~ 0,
+                                pared_reg == 1 | techos_reg == 1 | pisos_reg == 1 ~1),
+            res_cuarto = (tot_resid/num_cuarto),
+            hacin = case_when(res_cuarto <= 2.5 ~0,
+                              res_cuarto > 2.5 ~1),
+            excu = case_when(excusado == 1 ~0, 
+                             excusado == 2 ~1),
+            prec_esp = case_when(hacin == 0 & excu == 0 ~0,
+                                 hacin == 1 | hacin == 1 ~1),
+            rezago = case_when(mat_det == 0 & mat_reg == 0 & prec_esp == 0 ~0,
+                               mat_det == 1 | mat_reg == 1 | prec_esp == 1~1),
+            edad_jefe = as.numeric(edad_jefe),
+            edades=case_when(edad_jefe>=18 & edad_jefe<= 35 ~ 1,
+                             edad_jefe>=60 ~ 2),
+            sexo_jefe = as.numeric(sexo_jefe), 
+            jefe_mujer = case_when(sexo_jefe <= 1 ~ 0,
+                                   sexo_jefe ==2~ 1),
+            factor = factor,
+            ubica_geo = ubica_geo)
+
+pob_obj_jov <- rezago_habitacional_2022 %>% 
+  select(factor, ubica_geo, rezago, edades, jefe_mujer)
+
+pob_s_NA <- pob_obj_jov[complete.cases(pob_obj_jov),] 
+
+pob_fn_jov <- pob_s_NA %>% 
+  mutate(rezago_joven = case_when(
+    is.na(edades) ~ NA_real_,
+    edades == 1 ~ 1,
+    edades == 2 ~ 0),
+    rzg_jvn = case_when(rezago_joven == 1 & rezago == 1 ~ 1,
+                        T ~ 0),
+    factor = factor,
+    entidad = as.numeric(substr(ubica_geo, 1, nchar(ubica_geo)-3))) %>% 
+  select(entidad, rzg_jvn, factor)
+
+poblacion_jovenes <- pob_fn_jov %>% 
+  mutate(pob_jov_rz = (rzg_jvn * factor),
+         entidad = entidad) %>% 
+  select(entidad, pob_jov_rz)
+
+poblacion_jovenes <- poblacion_jovenes %>% 
+  group_by(entidad) %>% 
+  summarise_all(sum)            
+
+poblacion_jovenes_tabla <- "/Users/ximena/Desktop/yo_adulta/trabajo/SEDATU/Rezago_Habitacional/Metodologia_rezago_habitacional/jov_1.xlsx"
+
+write.xlsx(poblacion_jovenes, file = poblacion_jovenes_tabla, rowNames = FALSE)            
+
+# viejos
+
+
+pob_obj_vjs <- rezago_habitacional_2022 %>% 
+  select(factor, ubica_geo, rezago, edades, jefe_mujer)
+
+pob_s_NA <- pob_obj_vjs[complete.cases(pob_obj_vjs),] 
+
+pob_fn_vjs <- pob_s_NA %>% 
+  mutate(rezago_vjs = case_when(
+    is.na(edades) ~ NA_real_,
+    edades == 1 ~ 0,
+    edades == 2 ~ 1),
+    rzg_vjs = case_when(rezago_vjs == 1 & rezago == 1 ~ 1,
+                        T ~ 0),
+    factor = factor,
+    entidad = as.numeric(substr(ubica_geo, 1, nchar(ubica_geo)-3))) %>% 
+  select(entidad, rzg_vjs, factor)
+
+poblacion_viejos <- pob_fn_vjs %>% 
+  mutate(pob_vjs_rz = (rzg_vjs * factor),
+         entidad = entidad) %>% 
+  select(entidad, pob_vjs_rz)
+
+poblacion_viejos <- poblacion_viejos %>% 
+  group_by(entidad) %>% 
+  summarise_all(sum)            
+
+poblacion_viejos_tabla <- "/Users/ximena/Desktop/yo_adulta/trabajo/SEDATU/Rezago_Habitacional/Metodologia_rezago_habitacional/vjs_1.xlsx"
+
+write.xlsx(poblacion_viejos, file = poblacion_viejos_tabla, rowNames = FALSE)     
+
+
+
+# mujeres
+
+
+pob_obj_mjs <- rezago_habitacional_2022 %>% 
+  select(factor, ubica_geo, rezago, edades, jefe_mujer)
+
+pob_s_NA <- pob_obj_mjs[complete.cases(pob_obj_mjs),] 
+
+pob_fn_mjs <- pob_s_NA %>% 
+  mutate(rezago_mjs = case_when(
+    is.na(jefe_mujer) ~ NA_real_,
+    jefe_mujer == 1 ~ 1,
+    jefe_mujer == 0 ~ 0),
+    rzg_mjs = case_when(rezago_mjs == 1 & rezago == 1 ~ 1,
+                        T ~ 0),
+    factor = factor,
+    entidad = as.numeric(substr(ubica_geo, 1, nchar(ubica_geo)-3))) %>% 
+  select(entidad, rzg_mjs, factor)
+
+poblacion_mujeres <- pob_fn_mjs %>% 
+  mutate(pob_mjs_rz = (rzg_mjs * factor),
+         entidad = entidad) %>% 
+  select(entidad, pob_mjs_rz)
+
+poblacion_mujeres <- poblacion_mujeres %>% 
+  group_by(entidad) %>% 
+  summarise_all(sum)            
+
+poblacion_mujeres_tabla <- "/Users/ximena/Desktop/yo_adulta/trabajo/SEDATU/Rezago_Habitacional/Metodologia_rezago_habitacional/mjs_1.xlsx"
+
+write.xlsx(poblacion_mujeres, file = poblacion_mujeres_tabla, rowNames = FALSE)
+
+
+            
