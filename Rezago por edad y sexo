@@ -9,11 +9,11 @@ pacman::p_load(tidyverse)
 # Importar base de datos
 
 library(readr)
-vivienda_2022 <- read_csv("~/Downloads/enigh2022_ns_viviendas_csv (1).zip")
+vivienda_2022 <- read_csv("~/Downloads/enigh2022_ns_viviendas_csv (1).zip") #Aquí deberían descargar la categoría de vivienda de la ENIGH del sitio del INEGI
 View(vivienda_2022)
 
 concentradohogar_2022 <- read_csv("~/Desktop/yo_adulta/trabajo/SEDATU/Rezago_Habitacional/Metodologia_rezago_habitacional/01_datos/concentradohogar_2022.csv")
-View(concentradohogar_2022)
+View(concentradohogar_2022) #Y aquí deberían descargar la categoría de concentrado de hogar de la ENIGH del sitio del INEGI
 
 
 rezago_habitacional_2022 <- left_join(vivienda_2022, concentradohogar_2022, by = c("folioviv", "ubica_geo", "factor")) %>% 
